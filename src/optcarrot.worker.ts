@@ -65,22 +65,26 @@ class App {
     // Initialize Ruby VM
     vm.initialize();
 
+    console.time("init-optcarrot");
     vm.eval(`
+      require "js"
+      JS::eval("console.time('require-optcarrot')")
       require_relative "/optcarrot/lib/optcarrot.rb"
+      JS::eval("console.timeEnd('require-optcarrot')")
       args = [
           "--video=canvas",
           "--audio=none",
           "--input=none",
           "/optcarrot/examples/Lan_Master.nes",
       ]
-      Optcarrot::NES.new(args).run
+      JS::eval("console.time('Optcarrot::NES.new')")
+      nes = Optcarrot::NES.new(args)
+      JS::eval("console.timeEnd('Optcarrot::NES.new')")
+      nes.run
     `);
-
-    console.log("end of optcarrot");
   }
 
   tick() {
-    console.log("tick");
     this.remoteRender(this.videoImageBytes());
   }
 
