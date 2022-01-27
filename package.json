@@ -1,0 +1,10 @@
+{
+  "name": "optcarrot-web",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@wasmer/wasi": "^0.12.0",
+    "@wasmer/wasmfs": "^0.12.0"
+  }
+}
