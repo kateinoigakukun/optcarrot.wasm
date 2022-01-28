@@ -5,13 +5,14 @@ import { RubyVM } from "ruby-wasm-wasi";
 import * as path from "path-browserify";
 
 export type OptcarrotWorkerPort = {
-  init(render: (image: Uint8Array) => void): void;
+  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void): void;
 };
 
 class App {
   wasmFs: WasmFs;
   wasi: WASI;
   remoteRender: (image: Uint8Array) => void;
+  remotePlayAudio: (audio: Int16Array) => void;
 
   constructor() {
     this.wasmFs = new WasmFs();
@@ -41,8 +42,9 @@ class App {
     };
   }
 
-  async init(render: (image: Uint8Array) => void) {
+  async init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void) {
     this.remoteRender = render;
+    this.remotePlayAudio = playAudio;
 
     // Fetch and instantiate WebAssembly binary
     const response = await fetch("./optcarrot.wasm");
@@ -73,8 +75,9 @@ class App {
       JS::eval("console.timeEnd('require-optcarrot')")
       args = [
           "--video=canvas",
-          "--audio=none",
+          "--audio=webaudio",
           "--input=none",
+          "--audio-sample-rate=11050",
           "/optcarrot/examples/Lan_Master.nes",
       ]
       JS::eval("console.time('Optcarrot::NES.new')")
@@ -84,15 +87,27 @@ class App {
     `);
   }
 
-  tick() {
-    const bytes = this.videoImageBytes();
+  tickVideo() {
+    const bytes = this.videoBytes();
     this.remoteRender(Comlink.transfer(bytes, [bytes.buffer]));
   }
 
-  videoImageBytes(): Uint8Array {
+  tickAudio() {
+    const bytes = this.audioBytes();
+    this.remotePlayAudio(Comlink.transfer(bytes, [bytes.buffer]));
+  }
+
+  videoBytes(): Uint8Array {
     return this.wasmFs.fs.readFileSync(
       "/OPTCARROT_TMP/video.data"
     ) as Uint8Array;
+  }
+
+  audioBytes(): Int16Array {
+    const bytes = this.wasmFs.fs.readFileSync(
+      "/OPTCARROT_TMP/audio.data"
+    ) as Uint8Array;
+    return new Int16Array(bytes.buffer)
   }
 }
 const app = new App();
@@ -100,7 +115,7 @@ const app = new App();
 globalThis.Optcarrot = app;
 
 Comlink.expose({
-  init(render: (image: Uint8Array) => void): void {
-      app.init(render);
+  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void): void {
+    app.init(render, playAudio);
   },
 });

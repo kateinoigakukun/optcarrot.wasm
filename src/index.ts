@@ -1,15 +1,6 @@
 import * as Comlink from "comlink";
 import { OptcarrotWorkerPort } from "./optcarrot.worker";
 
-const Optcarrot = {
-  tick() {
-    console.log("tick");
-  },
-};
-
-// @ts-ignore
-globalThis.Optcarrot = Optcarrot;
-
 const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
   // @ts-ignore
   new Worker(new URL("optcarrot.worker.ts", import.meta.url), {
@@ -39,9 +30,35 @@ class NESView {
     }
 }
 
-const nesView = new NESView(document.getElementById("nes-video") as HTMLCanvasElement);
+class NESAudio {
+    context: AudioContext;
+    scheduledTime: number;
 
-console.log("Initializing Optcarrot...");
+    constructor() {
+        this.context = new AudioContext({ sampleRate: 11050 });
+        this.scheduledTime = 0;
+    }
+
+    push(input: Int16Array) {
+        const buffer = this.context.createBuffer(1, input.length, this.context.sampleRate);
+        const bufferSrc = this.context.createBufferSource();
+        const bufferData = buffer.getChannelData(0);
+        const currentTime = this.context.currentTime;
+        for (let i = 0; i < input.length; i++) {
+            bufferData[i] = input[i] / (2 << 15);
+        }
+        bufferSrc.buffer = buffer;
+        bufferSrc.connect(this.context.destination);
+        if (currentTime < this.scheduledTime) {
+            bufferSrc.start(this.scheduledTime);
+            this.scheduledTime += buffer.duration;
+        } else {
+            console.warn("Audio buffer underrun :(");
+            bufferSrc.start(currentTime);
+            this.scheduledTime = currentTime + buffer.duration;
+        }
+    }
+}
 
 class FpsCounter {
     times: number[];
@@ -58,12 +75,33 @@ class FpsCounter {
     }
 }
 
-const fps = new FpsCounter();
-const fpsIndicator = document.getElementById("fps-indicator");
+const play = async () => {
+    const nesView = new NESView(document.getElementById("nes-video") as HTMLCanvasElement);
+    const nesAudio = new NESAudio();
 
-optcarrot.init(
-  Comlink.proxy((bytes) => {
-    nesView.draw(bytes);
-    fpsIndicator.innerText = fps.tick().toString();
-  })
-);
+    console.log("Initializing Optcarrot...");
+
+    const fps = new FpsCounter();
+    const fpsIndicator = document.getElementById("fps-indicator");
+    const isAudioEnabledCheckbox = document.getElementById("audio-enabled") as HTMLInputElement;
+    let audioEnabled = isAudioEnabledCheckbox.checked;
+
+    isAudioEnabledCheckbox.onclick = () => {
+        audioEnabled = isAudioEnabledCheckbox.checked;
+    }
+
+    optcarrot.init(
+      // render
+      Comlink.proxy((bytes) => {
+        nesView.draw(bytes);
+        fpsIndicator.innerText = fps.tick().toString();
+      }),
+      // playAudio
+      Comlink.proxy((bytes) => {
+        if (!audioEnabled) return;
+        nesAudio.push(bytes);
+      }),
+    );
+}
+
+document.getElementById("play-button").addEventListener("click", play);
