@@ -17,8 +17,30 @@ const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
   })
 );
 
-const canvas = document.getElementById("nes-video") as HTMLCanvasElement;
-const ctx = canvas.getContext("2d");
+class NESView {
+    canvasContext: CanvasRenderingContext2D;
+    scalingCanvas: HTMLCanvasElement;
+    scalingContext: CanvasRenderingContext2D;
+
+    constructor(canvas: HTMLCanvasElement) {
+        this.canvasContext = canvas.getContext("2d");
+        this.scalingCanvas = document.createElement('canvas') as HTMLCanvasElement;
+        this.scalingCanvas.width = canvas.width;
+        this.scalingCanvas.height = canvas.height;
+        this.scalingContext = this.scalingCanvas.getContext("2d");
+        this.canvasContext.scale(2, 2);
+    }
+
+    draw(bytes: Uint8Array) {
+        const rgba = new Uint8ClampedArray(bytes.buffer);
+        const image = new ImageData(rgba, 256, 224);
+        this.scalingContext.putImageData(image, 0, 0);
+        this.canvasContext.drawImage(this.scalingCanvas, 0, 0);
+    }
+}
+
+const nesView = new NESView(document.getElementById("nes-video") as HTMLCanvasElement);
+
 console.log("Initializing Optcarrot...");
 
 class FpsCounter {
@@ -41,9 +63,7 @@ const fpsIndicator = document.getElementById("fps-indicator");
 
 optcarrot.init(
   Comlink.proxy((bytes) => {
-    const rgba = new Uint8ClampedArray(bytes.buffer);
-    const image = new ImageData(rgba, 256, 224);
-    ctx.putImageData(image, 0, 0);
+    nesView.draw(bytes);
     fpsIndicator.innerText = fps.tick().toString();
   })
 );
