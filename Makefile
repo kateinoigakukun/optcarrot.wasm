@@ -1,3 +1,9 @@
+FORCE:
+.PHONY: FORCE
 
-static/optcarrot.wasm:
-	wasi-vfs pack rubies/head-wasm32-unknown-wasi-full-js/usr/local/bin/ruby --mapdir /usr::rubies/head-wasm32-unknown-wasi-full-js/usr --mapdir /optcarrot::./optcarrot -o static/optcarrot.wasm
+RUBY_ROOT = rubies/pr5502-wasm32-unknown-wasi-full-js
+
+static/optcarrot.wasm: FORCE
+	rm -rf $(RUBY_ROOT)/usr/local/include
+	rm -f $(RUBY_ROOT)/usr/local/lib/libruby-static.a
+	wasi-vfs pack $(RUBY_ROOT)/usr/local/bin/ruby --mapdir /usr::$(RUBY_ROOT)/usr --mapdir /optcarrot::./optcarrot -o static/optcarrot.wasm
