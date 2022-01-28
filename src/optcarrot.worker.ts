@@ -85,7 +85,8 @@ class App {
   }
 
   tick() {
-    this.remoteRender(this.videoImageBytes());
+    const bytes = this.videoImageBytes();
+    this.remoteRender(Comlink.transfer(bytes, [bytes.buffer]));
   }
 
   videoImageBytes(): Uint8Array {
