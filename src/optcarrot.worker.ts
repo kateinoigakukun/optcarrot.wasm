@@ -80,6 +80,7 @@ class App {
       require_relative "/optcarrot/lib/optcarrot.rb"
       JS::eval("console.timeEnd('require-optcarrot')")
       args = [
+          "--opt",
           "--video=canvas",
           "--audio=webaudio",
           "--input=browser",

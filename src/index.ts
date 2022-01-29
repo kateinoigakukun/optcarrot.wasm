@@ -26,7 +26,7 @@ class NESView {
 
     draw(bytes: Uint8Array) {
         const rgba = new Uint8ClampedArray(bytes.buffer);
-        const image = new ImageData(rgba, 256, 224);
+        const image = new ImageData(rgba, 256, 240);
         this.scalingContext.putImageData(image, 0, 0);
         this.canvasContext.drawImage(this.scalingCanvas, 0, 0);
     }
