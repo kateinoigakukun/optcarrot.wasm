@@ -149,14 +149,14 @@ const play = async () => {
     audioEnabled = isAudioEnabledCheckbox.checked;
   };
   document.addEventListener("keydown", (event) => {
-    const code = padCodeFromCode(event.key);
+    const code = padCodeFromCode(event.code);
     if (code !== null) {
       keyEventProducer.push(code, true);
     }
   });
 
   document.addEventListener("keyup", (event) => {
-    const code = padCodeFromCode(event.key);
+    const code = padCodeFromCode(event.code);
     if (code !== null) {
       keyEventProducer.push(code, false);
     }
