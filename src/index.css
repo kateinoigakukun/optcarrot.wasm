@@ -13,3 +13,16 @@ main {
   margin-left: auto;
   width: max-content;
 }
+
+.help-box {
+  border-radius: 10px;
+  border: 1px solid black;
+  padding: 0px 16px;
+  margin: 8px 0px;
+}
+
+kbd.key {
+  border-radius: 3px;
+  padding: 1px 2px 0;
+  border: 1px solid black;
+}

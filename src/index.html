@@ -8,11 +8,26 @@
     <script type="module" src="./index.ts"></script>
     <main>
       <canvas id="nes-video" width="512" height="448"></canvas>
-      <div>FPS: <span id="fps-indicator">0</span></div>
-      <span>
+      <div>
+        <span> FPS: <span id="fps-indicator">0</span></span>
+      </div>
+      <div>
         <input type="checkbox" name="audio-enabled" id="audio-enabled" />
         <label for="audio-enabled">Enable Audio</label>
-      </span>
+      </div>
+      <div class="help-box">
+        <span class="small-label">Key Mapping</span>
+        <p>
+          <kbd class="key">↑</kbd>
+          <kbd class="key">↓</kbd>
+          <kbd class="key">→</kbd>
+          <kbd class="key">←</kbd>
+          <kbd class="key">A</kbd>
+          <kbd class="key">B</kbd>
+          <kbd class="key">Enter</kbd> to Start
+          <kbd class="key">Space</kbd> to Select
+        </p>
+      </div>
     </main>
   </body>
 </html>
