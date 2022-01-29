@@ -1,10 +1,5 @@
 import { RingBuffer } from "ringbuf.js";
 
-const DATA_SIZE_FIELD_OFFSET = 0;
-const DATA_LOCK_FIELD_OFFSET = 1;
-const DATA_BEGIN_OFFSET = 3;
-const KEY_EVENT_SIZE = 4;
-
 export class KeyEventProducer {
   buffer: RingBuffer;
   constructor(buffer: RingBuffer) {

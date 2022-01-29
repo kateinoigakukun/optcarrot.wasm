@@ -7,7 +7,11 @@ import { KeyEventConsumer } from "./key-event-bus";
 import { RingBuffer } from "ringbuf.js";
 
 export type OptcarrotWorkerPort = {
-  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void, keyEventBuffer: SharedArrayBuffer): void;
+  init(
+    render: (image: Uint8Array) => void,
+    playAudio: (audio: Int16Array) => void,
+    keyEventBuffer: SharedArrayBuffer
+  ): void;
   keyEvent(code: number, pressed: boolean): void;
 };
 
@@ -47,10 +51,16 @@ class App {
     };
   }
 
-  async init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void, keyEventBuffer: SharedArrayBuffer) {
+  async init(
+    render: (image: Uint8Array) => void,
+    playAudio: (audio: Int16Array) => void,
+    keyEventBuffer: SharedArrayBuffer
+  ) {
     this.remoteRender = render;
     this.remotePlayAudio = playAudio;
-    this.keyEventConsumer = new KeyEventConsumer(new RingBuffer(keyEventBuffer, Uint8Array));
+    this.keyEventConsumer = new KeyEventConsumer(
+      new RingBuffer(keyEventBuffer, Uint8Array)
+    );
 
     // Fetch and instantiate WebAssembly binary
     const response = await fetch("./optcarrot.wasm");
@@ -114,13 +124,13 @@ class App {
     const bytes = this.wasmFs.fs.readFileSync(
       "/OPTCARROT_TMP/audio.data"
     ) as Uint8Array;
-    return new Int16Array(bytes.buffer)
+    return new Int16Array(bytes.buffer);
   }
 
   fetchKeyEvent(): string {
     const event = this.keyEventConsumer.consume();
     if (!event) return "";
-    return event.join(",")
+    return event.join(",");
   }
 }
 const app = new App();
@@ -128,9 +138,12 @@ const app = new App();
 globalThis.Optcarrot = app;
 
 Comlink.expose({
-  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void, keyEventBuffer: SharedArrayBuffer): void {
+  init(
+    render: (image: Uint8Array) => void,
+    playAudio: (audio: Int16Array) => void,
+    keyEventBuffer: SharedArrayBuffer
+  ): void {
     app.init(render, playAudio, keyEventBuffer);
   },
-  keyEvent(code: number, pressed: boolean): void {
-  },
+  keyEvent(code: number, pressed: boolean): void {},
 });
