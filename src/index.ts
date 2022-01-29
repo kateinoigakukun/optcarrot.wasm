@@ -103,14 +103,16 @@ class FpsCounter {
   }
 }
 
-const padCodeFromKey = (key: string) => {
-  switch (key) {
+const padCodeFromCode = (code: string) => {
+  switch (code) {
     case "KeyA":
       return 0x0;
     case "KeyB":
       return 0x1;
-    // case "SELECT": return 0x2; // select
-    // case "START": return 0x3; // select
+    case "Space":
+        return 0x2; // start
+    case "Enter":
+        return 0x3; // select
     case "ArrowUp":
       return 0x04;
     case "ArrowDown":
@@ -147,14 +149,14 @@ const play = async () => {
     audioEnabled = isAudioEnabledCheckbox.checked;
   };
   document.addEventListener("keydown", (event) => {
-    const code = padCodeFromKey(event.key);
+    const code = padCodeFromCode(event.key);
     if (code !== null) {
       keyEventProducer.push(code, true);
     }
   });
 
   document.addEventListener("keyup", (event) => {
-    const code = padCodeFromKey(event.key);
+    const code = padCodeFromCode(event.key);
     if (code !== null) {
       keyEventProducer.push(code, false);
     }
