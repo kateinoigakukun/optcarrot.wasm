@@ -1,4 +1,15 @@
-html, body {
-    height: 100%;
-    margin: 0;
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+#nes-video {
+  background-color: black;
+}
+
+main {
+  margin-right: auto;
+  margin-left: auto;
+  width: max-content;
 }
