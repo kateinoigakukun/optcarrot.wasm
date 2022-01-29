@@ -3,14 +3,19 @@ import { WASI } from "@wasmer/wasi";
 import { WasmFs } from "@wasmer/wasmfs";
 import { RubyVM } from "ruby-wasm-wasi";
 import * as path from "path-browserify";
+import { KeyEventConsumer } from "./key-event-bus";
+import { RingBuffer } from "ringbuf.js";
 
 export type OptcarrotWorkerPort = {
-  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void): void;
+  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void, keyEventBuffer: SharedArrayBuffer): void;
+  keyEvent(code: number, pressed: boolean): void;
 };
 
 class App {
   wasmFs: WasmFs;
   wasi: WASI;
+  keyEventConsumer: KeyEventConsumer;
+
   remoteRender: (image: Uint8Array) => void;
   remotePlayAudio: (audio: Int16Array) => void;
 
@@ -42,9 +47,10 @@ class App {
     };
   }
 
-  async init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void) {
+  async init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void, keyEventBuffer: SharedArrayBuffer) {
     this.remoteRender = render;
     this.remotePlayAudio = playAudio;
+    this.keyEventConsumer = new KeyEventConsumer(new RingBuffer(keyEventBuffer, Uint8Array));
 
     // Fetch and instantiate WebAssembly binary
     const response = await fetch("./optcarrot.wasm");
@@ -76,7 +82,7 @@ class App {
       args = [
           "--video=canvas",
           "--audio=webaudio",
-          "--input=none",
+          "--input=browser",
           "--audio-sample-rate=11050",
           "/optcarrot/examples/Lan_Master.nes",
       ]
@@ -109,13 +115,21 @@ class App {
     ) as Uint8Array;
     return new Int16Array(bytes.buffer)
   }
+
+  fetchKeyEvent(): string {
+    const event = this.keyEventConsumer.consume();
+    if (!event) return "";
+    return event.join(",")
+  }
 }
 const app = new App();
 // @ts-ignore
 globalThis.Optcarrot = app;
 
 Comlink.expose({
-  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void): void {
-    app.init(render, playAudio);
+  init(render: (image: Uint8Array) => void, playAudio: (audio: Int16Array) => void, keyEventBuffer: SharedArrayBuffer): void {
+    app.init(render, playAudio, keyEventBuffer);
+  },
+  keyEvent(code: number, pressed: boolean): void {
   },
 });
