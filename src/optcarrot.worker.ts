@@ -6,15 +6,16 @@ import * as path from "path-browserify";
 import { KeyEventConsumer } from "./key-event-bus";
 import { RingBuffer } from "ringbuf.js";
 
-export type OptcarrotWorkerPort = {
+export interface OptcarrotWorkerPort {
   init(
+    options: string[],
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     keyEventBuffer: SharedArrayBuffer
   ): void;
-};
+}
 
-class App {
+class App implements OptcarrotWorkerPort {
   wasmFs: WasmFs;
   wasi: WASI;
   keyEventConsumer: KeyEventConsumer;
@@ -51,6 +52,7 @@ class App {
   }
 
   async init(
+    options: string[],
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     keyEventBuffer: SharedArrayBuffer
@@ -83,18 +85,18 @@ class App {
     vm.initialize();
 
     console.time("init-optcarrot");
+    console.log("Options:", options);
     vm.eval(`
       require "js"
       JS::eval("console.time('require-optcarrot')")
       require_relative "/optcarrot/lib/optcarrot.rb"
       JS::eval("console.timeEnd('require-optcarrot')")
       args = [
-          "--opt",
+          ${options.map((option) => `"${option}"`).join(", ")},
           "--video=canvas",
           "--audio=webaudio",
           "--input=browser",
           "--audio-sample-rate=11050",
-          "/optcarrot/examples/Lan_Master.nes",
       ]
       JS::eval("console.time('Optcarrot::NES.new')")
       nes = Optcarrot::NES.new(args)
@@ -138,10 +140,11 @@ globalThis.Optcarrot = app;
 
 Comlink.expose({
   init(
+    options: string[],
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     keyEventBuffer: SharedArrayBuffer
   ): void {
-    app.init(render, playAudio, keyEventBuffer);
+    app.init(options, render, playAudio, keyEventBuffer);
   },
 });

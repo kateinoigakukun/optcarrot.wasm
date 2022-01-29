@@ -119,6 +119,27 @@ const padCodeFromCode = (code: string) => {
   }
 };
 
+const deriveOptions = (url: URL) => {
+  const ROMS = {
+      "Lan_Master.nes": "/optcarrot/examples/Lan_Master.nes",
+  }
+  const enableOptRaw = url.searchParams.get("opt");
+  const enableOpt = enableOptRaw === null ? true : (enableOptRaw === "true");
+  const romRaw = url.searchParams.get("rom");
+  const romKey = romRaw === null ? "Lan_Master.nes" : romRaw;
+  const options = [];
+
+  if (enableOpt) {
+    options.push("--opt");
+  }
+  if (ROMS[romKey]) {
+    options.push(ROMS[romKey]);
+  } else {
+    throw new Error(`Unknown ROM: ${romKey}`);
+  }
+  return options;
+};
+
 const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
   // @ts-ignore
   new Worker(new URL("optcarrot.worker.ts", import.meta.url), {
@@ -126,7 +147,7 @@ const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
   })
 );
 
-const play = async () => {
+const play = async (url: URL) => {
   const nesView = new NESView(
     document.getElementById("nes-video") as HTMLCanvasElement
   );
@@ -163,6 +184,7 @@ const play = async () => {
   });
 
   optcarrot.init(
+    deriveOptions(url),
     // render
     Comlink.proxy((bytes) => {
       nesView.draw(bytes);
@@ -181,5 +203,5 @@ const play = async () => {
 };
 
 if (typeof SharedArrayBuffer !== "undefined") {
-  play();
+  play(new URL(window.location.href));
 }
