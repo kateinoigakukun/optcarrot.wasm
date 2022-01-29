@@ -1,0 +1,1 @@
+{"mappings":"AAAA,UAEA,WAAA,CACA,QACA,CAEA,WACA,qBACA,CAEA,KAEA,gBAAA,CADA,iBAAA,CAEA,iBACA","sources":["src/index.css"],"sourcesContent":["html,\nbody {\n  height: 100%;\n  margin: 0;\n}\n\n#nes-video {\n  background-color: black;\n}\n\nmain {\n  margin-right: auto;\n  margin-left: auto;\n  width: max-content;\n}\n"],"names":[],"version":3,"file":"index.6773834f.css.map"}
