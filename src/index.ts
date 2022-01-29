@@ -3,6 +3,25 @@ import { KeyEventProducer } from "./key-event-bus";
 import { OptcarrotWorkerPort } from "./optcarrot.worker";
 import { RingBuffer } from "ringbuf.js"
 
+if ("serviceWorker" in navigator) {
+  // Register service worker
+  // @ts-ignore
+  navigator.serviceWorker.register(new URL("./sw.js", import.meta.url)).then(
+    function (registration) {
+      console.log("COOP/COEP Service Worker registered", registration.scope);
+      // If the registration is active, but it's not controlling the page
+      if (registration.active && !navigator.serviceWorker.controller) {
+          window.location.reload();
+      }
+    },
+    function (err) {
+      console.log("COOP/COEP Service Worker failed to register", err);
+    }
+  );
+} else {
+  console.warn("Cannot register a service worker");
+}
+
 const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
   // @ts-ignore
   new Worker(new URL("optcarrot.worker.ts", import.meta.url), {
