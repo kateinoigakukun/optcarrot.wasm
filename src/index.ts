@@ -22,13 +22,6 @@ if ("serviceWorker" in navigator) {
   console.warn("Cannot register a service worker");
 }
 
-const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
-  // @ts-ignore
-  new Worker(new URL("optcarrot.worker.ts", import.meta.url), {
-    type: "module",
-  })
-);
-
 class NESView {
   canvasContext: CanvasRenderingContext2D;
   scalingCanvas: HTMLCanvasElement;
@@ -110,9 +103,9 @@ const padCodeFromCode = (code: string) => {
     case "KeyB":
       return 0x1;
     case "Space":
-        return 0x2; // start
+      return 0x2; // start
     case "Enter":
-        return 0x3; // select
+      return 0x3; // select
     case "ArrowUp":
       return 0x04;
     case "ArrowDown":
@@ -125,6 +118,13 @@ const padCodeFromCode = (code: string) => {
       return null;
   }
 };
+
+const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
+  // @ts-ignore
+  new Worker(new URL("optcarrot.worker.ts", import.meta.url), {
+    type: "module",
+  })
+);
 
 const play = async () => {
   const nesView = new NESView(
@@ -180,5 +180,6 @@ const play = async () => {
   );
 };
 
-play();
-// document.getElementById("play-button").addEventListener("click", play);
+if (typeof SharedArrayBuffer !== "undefined") {
+  play();
+}

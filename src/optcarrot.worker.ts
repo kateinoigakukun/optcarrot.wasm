@@ -12,7 +12,6 @@ export type OptcarrotWorkerPort = {
     playAudio: (audio: Int16Array) => void,
     keyEventBuffer: SharedArrayBuffer
   ): void;
-  keyEvent(code: number, pressed: boolean): void;
 };
 
 class App {
@@ -145,5 +144,4 @@ Comlink.expose({
   ): void {
     app.init(render, playAudio, keyEventBuffer);
   },
-  keyEvent(code: number, pressed: boolean): void {},
 });
