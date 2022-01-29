@@ -53,7 +53,7 @@ class NESAudio {
             bufferSrc.start(this.scheduledTime);
             this.scheduledTime += buffer.duration;
         } else {
-            console.warn("Audio buffer underrun :(");
+            console.warn("Audio buffer underrun :(", this.scheduledTime - currentTime);
             bufferSrc.start(currentTime);
             this.scheduledTime = currentTime + buffer.duration;
         }
