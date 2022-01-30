@@ -64,37 +64,6 @@ class App implements OptcarrotWorkerPort {
     };
   }
 
-  async readBodyBytes(response: Response, progress: (input: ProgressInput) => void): Promise<Uint8Array> {
-    progress({ kind: "message", value: "Downloading..." });
-    const rawTotal = response.headers.get('content-length') || null;
-    if (!rawTotal) {
-      const buffer = new Uint8Array(await response.arrayBuffer());
-      progress({ kind: "progress", value: 1 });
-      return buffer;
-    }
-    const totalSize = parseInt(rawTotal, 10);
-    let chunk = 0;
-    const buffer = new Uint8Array(totalSize);
-    return new Promise((resolve, reject) => {
-      const reader = response.body.getReader();
-      reader.closed.then(() => {
-        reject(new Error("Stream closed"));
-      });
-      reader.read().then(function processResult(result) {
-        if (result.done) {
-          progress({ kind: "progress", value: 1 });
-          resolve(buffer);
-          return;
-        }
-        buffer.set(result.value, chunk);
-        chunk += result.value.length;
-        const per = Math.round(chunk/totalSize * 100);
-        progress({ kind: "progress", value: per });
-        return reader.read().then(processResult);
-      });
-    })
-  }
-
   async init(
     options: string[],
     render: (image: Uint8Array) => void,
@@ -109,10 +78,12 @@ class App implements OptcarrotWorkerPort {
     );
 
     // Fetch and instantiate WebAssembly binary
-    const response = await fetch("./optcarrot.wasm");
-    const buffer = await this.readBodyBytes(response, progress);
-    progress({ kind: "message", value: "Instantiating Optcarrot..." });
+    progress({ kind: "message", value: "Downloading..." });
     progress({ kind: "progress", value: 0 });
+    const response = await fetch("./optcarrot.wasm");
+    const buffer = await response.arrayBuffer();
+    progress({ kind: "progress", value: 0.2 });
+    progress({ kind: "message", value: "Instantiating Optcarrot..." });
 
     const imports = {
       wasi_snapshot_preview1: this.wasi.wasiImport,
