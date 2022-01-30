@@ -96,6 +96,34 @@ class FpsCounter {
   }
 }
 
+class LoadProgress {
+  progress: HTMLProgressElement;
+  message: HTMLElement;
+  constructor(progress: HTMLProgressElement, message: HTMLElement) {
+    this.progress = progress;
+    this.progress.max = 1;
+    this.message = message;
+  }
+
+  log(message: string) {
+    this.message.innerText = message;
+  }
+
+  error(message: string) {
+    this.message.innerText = message;
+    this.progress.hidden = true;
+  }
+
+  setProgress(value: number) {
+    this.progress.value = value;
+  }
+
+  hide() {
+    this.progress.hidden = true;
+    this.message.hidden = true;
+  }
+}
+
 const padCodeFromCode = (code: string) => {
   switch (code) {
     case "KeyZ":
@@ -121,10 +149,10 @@ const padCodeFromCode = (code: string) => {
 
 const deriveOptions = (url: URL) => {
   const ROMS = {
-      "Lan_Master.nes": "/optcarrot/examples/Lan_Master.nes",
-  }
+    "Lan_Master.nes": "/optcarrot/examples/Lan_Master.nes",
+  };
   const enableOptRaw = url.searchParams.get("opt");
-  const enableOpt = enableOptRaw === null ? true : (enableOptRaw === "true");
+  const enableOpt = enableOptRaw === null ? true : enableOptRaw === "true";
   const romRaw = url.searchParams.get("rom");
   const romKey = romRaw === null ? "Lan_Master.nes" : romRaw;
   const options = [];
@@ -148,6 +176,10 @@ const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
 );
 
 const play = async (url: URL) => {
+  const progress = new LoadProgress(
+    document.getElementById("loading-progress") as HTMLProgressElement,
+    document.getElementById("loading-message")
+  );
   const nesView = new NESView(
     document.getElementById("nes-video") as HTMLCanvasElement
   );
@@ -157,7 +189,7 @@ const play = async (url: URL) => {
   );
   let nesAudio = null;
 
-  console.log("Initializing Optcarrot...");
+  progress.log("Initializing Optcarrot...");
 
   const fps = new FpsCounter();
   const fpsIndicator = document.getElementById("fps-indicator");
@@ -197,6 +229,26 @@ const play = async (url: URL) => {
         nesAudio = new NESAudio();
       }
       nesAudio.push(bytes);
+    }),
+    Comlink.proxy((input) => {
+      switch (input.kind) {
+        case "error": {
+          progress.error(input.message);
+          break;
+        }
+        case "message": {
+          progress.log(input.value);
+          break;
+        }
+        case "done": {
+          progress.hide();
+          break;
+        }
+        case "progress": {
+          progress.setProgress(input.value);
+          break;
+        }
+      }
     }),
     keyEventProducer.buffer.buf
   );

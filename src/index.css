@@ -4,8 +4,32 @@ body {
   margin: 0;
 }
 
+.nes-display-box {
+  position: relative;
+  width: 512px;
+  height: 448px;
+  z-index: 1;
+}
+
 #nes-video {
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  position: absolute;
   background-color: black;
+}
+
+.nes-display-overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  top: -10px;
+  z-index: 3;
+  display: flex;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  color: aliceblue;
 }
 
 main {

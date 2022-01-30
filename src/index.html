@@ -7,7 +7,15 @@
   <body>
     <script type="module" src="./index.ts"></script>
     <main>
-      <canvas id="nes-video" width="512" height="448"></canvas>
+      <div class="nes-display-box">
+        <canvas id="nes-video" width="512" height="448"></canvas>
+        <div class="nes-display-overlay">
+          <div>
+            <progress id="loading-progress"></progress>
+            <div id="loading-message"></div>
+          </div>
+        </div>
+      </div>
       <div>
         <span> FPS: <span id="fps-indicator">0</span></span>
       </div>

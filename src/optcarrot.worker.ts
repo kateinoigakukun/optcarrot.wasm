@@ -6,11 +6,24 @@ import * as path from "path-browserify";
 import { KeyEventConsumer } from "./key-event-bus";
 import { RingBuffer } from "ringbuf.js";
 
+type ProgressInput = {
+  kind: "progress";
+  value: number;
+} | {
+  kind: "message";
+  value: string;
+} | {
+  kind: "error";
+  message: string;
+} | {
+  kind: "done";
+}
 export interface OptcarrotWorkerPort {
   init(
     options: string[],
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
+    progress: (input: ProgressInput) => void,
     keyEventBuffer: SharedArrayBuffer
   ): void;
 }
@@ -51,10 +64,42 @@ class App implements OptcarrotWorkerPort {
     };
   }
 
+  async readBodyBytes(response: Response, progress: (input: ProgressInput) => void): Promise<Uint8Array> {
+    progress({ kind: "message", value: "Downloading..." });
+    const rawTotal = response.headers.get('content-length') || null;
+    if (!rawTotal) {
+      const buffer = new Uint8Array(await response.arrayBuffer());
+      progress({ kind: "progress", value: 1 });
+      return buffer;
+    }
+    const totalSize = parseInt(rawTotal, 10);
+    let chunk = 0;
+    const buffer = new Uint8Array(totalSize);
+    return new Promise((resolve, reject) => {
+      const reader = response.body.getReader();
+      reader.closed.then(() => {
+        reject(new Error("Stream closed"));
+      });
+      reader.read().then(function processResult(result) {
+        if (result.done) {
+          progress({ kind: "progress", value: 1 });
+          resolve(buffer);
+          return;
+        }
+        buffer.set(result.value, chunk);
+        chunk += result.value.length;
+        const per = Math.round(chunk/totalSize * 100);
+        progress({ kind: "progress", value: per });
+        return reader.read().then(processResult);
+      });
+    })
+  }
+
   async init(
     options: string[],
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
+    progress: (input: ProgressInput) => void,
     keyEventBuffer: SharedArrayBuffer
   ) {
     this.remoteRender = render;
@@ -65,7 +110,9 @@ class App implements OptcarrotWorkerPort {
 
     // Fetch and instantiate WebAssembly binary
     const response = await fetch("./optcarrot.wasm");
-    const buffer = await response.arrayBuffer();
+    const buffer = await this.readBodyBytes(response, progress);
+    progress({ kind: "message", value: "Instantiating Optcarrot..." });
+    progress({ kind: "progress", value: 0 });
 
     const imports = {
       wasi_snapshot_preview1: this.wasi.wasiImport,
@@ -76,6 +123,7 @@ class App implements OptcarrotWorkerPort {
     // Instantiate the WebAssembly module
     const { instance } = await WebAssembly.instantiate(buffer, imports);
     await vm.setInstance(instance);
+    progress({ kind: "progress", value: 0.3 });
 
     // Initialize WASI application
     this.wasi.setMemory(instance.exports.memory as WebAssembly.Memory);
@@ -83,6 +131,7 @@ class App implements OptcarrotWorkerPort {
 
     // Initialize Ruby VM
     vm.initialize();
+    progress({ kind: "progress", value: 0.6 });
 
     console.time("init-optcarrot");
     console.log("Options:", options);
@@ -91,6 +140,9 @@ class App implements OptcarrotWorkerPort {
       JS::eval("console.time('require-optcarrot')")
       require_relative "/optcarrot/lib/optcarrot.rb"
       JS::eval("console.timeEnd('require-optcarrot')")
+    `);
+    progress({ kind: "progress", value: 0.8 });
+    vm.eval(`
       args = [
           ${options.map((option) => `"${option}"`).join(", ")},
           "--video=canvas",
@@ -99,10 +151,12 @@ class App implements OptcarrotWorkerPort {
           "--audio-sample-rate=11050",
       ]
       JS::eval("console.time('Optcarrot::NES.new')")
-      nes = Optcarrot::NES.new(args)
+      $nes = Optcarrot::NES.new(args)
       JS::eval("console.timeEnd('Optcarrot::NES.new')")
-      nes.run
     `);
+    progress({ kind: "progress", value: 1 });
+    progress({ kind: "done" });
+    vm.eval(`$nes.run`)
   }
 
   tickVideo() {
@@ -143,8 +197,15 @@ Comlink.expose({
     options: string[],
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
+    progress: (input: ProgressInput) => void,
     keyEventBuffer: SharedArrayBuffer
   ): void {
-    app.init(options, render, playAudio, keyEventBuffer);
+    try {
+      app.init(options, render, playAudio, progress, keyEventBuffer).catch((e) => {
+        progress({ kind: "error", message: "Failed to initialize Optcarrot: " + e.message });
+      });
+    } catch (e) {
+      progress({ kind: "error", message: "Failed to initialize Optcarrot: " + e.message });
+    }
   },
 });
