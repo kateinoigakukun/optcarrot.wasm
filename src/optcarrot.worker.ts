@@ -3,8 +3,7 @@ import { WASI } from "@wasmer/wasi";
 import { WasmFs } from "@wasmer/wasmfs";
 import { RubyVM } from "ruby-wasm-wasi";
 import * as path from "path-browserify";
-import { KeyEventConsumer } from "./key-event-bus";
-import { RingBuffer } from "ringbuf.js";
+import { KeyEventBuffer } from "./key-event-bus";
 
 export type ProgressInput =
   | {
@@ -35,8 +34,8 @@ export interface OptcarrotWorkerPort {
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     progress: (input: ProgressInput) => void,
-    keyEventBuffer: SharedArrayBuffer
   ): void;
+  pushKeyEvent(code: number, pressed: boolean): void;
 }
 
 const OPTCARROT_HEADLESS_DRIVER = `
@@ -113,10 +112,11 @@ module Optcarrot
 end
 `;
 
-class App implements OptcarrotWorkerPort {
+export class Optcarrot implements OptcarrotWorkerPort {
   wasmFs: WasmFs;
   wasi: WASI;
-  keyEventConsumer: KeyEventConsumer;
+  vm: RubyVM;
+  keyEventConsumer: KeyEventBuffer;
 
   tickVideo: () => void;
   tickAudio: () => void;
@@ -149,6 +149,7 @@ class App implements OptcarrotWorkerPort {
       if (handlers[fd]) handlers[fd](text);
       return originalWriteSync(fd, buffer, offset, length, position);
     };
+    this.keyEventConsumer = new KeyEventBuffer([]);
   }
 
   computeOptions(options: Options): string[] {
@@ -172,13 +173,9 @@ class App implements OptcarrotWorkerPort {
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     progress: (input: ProgressInput) => void,
-    keyEventBuffer: SharedArrayBuffer
   ) {
     this.remoteRender = render;
     this.remotePlayAudio = playAudio;
-    this.keyEventConsumer = new KeyEventConsumer(
-      new RingBuffer(keyEventBuffer, Uint8Array)
-    );
 
     // Fetch and instantiate WebAssembly binary
     progress({ kind: "message", value: "Downloading..." });
@@ -258,7 +255,14 @@ class App implements OptcarrotWorkerPort {
     `);
     progress({ kind: "progress", value: 1 });
     progress({ kind: "done" });
-    vm.eval(`$nes.run`);
+    vm.eval(`$nes.reset`);
+    this.vm = vm;
+    this.run();
+  }
+
+  run() {
+    setTimeout(this.run.bind(this), 0);
+    this.vm.eval(`$nes.step`);
   }
 
   videoBytes(): Uint8Array {
@@ -274,15 +278,20 @@ class App implements OptcarrotWorkerPort {
     return new Int16Array(bytes.buffer);
   }
 
+  pushKeyEvent(code: number, pressed: boolean): void {
+    this.keyEventConsumer.push(code, pressed);
+  }
+
   fetchKeyEvent(): string {
     const event = this.keyEventConsumer.consume();
     if (!event) return "";
     return event.join(",");
   }
 }
-const app = new App();
+
+const optcarrot = new Optcarrot();
 // @ts-ignore
-globalThis.Optcarrot = app;
+globalThis.Optcarrot = optcarrot;
 
 Comlink.expose({
   init(
@@ -290,11 +299,10 @@ Comlink.expose({
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     progress: (input: ProgressInput) => void,
-    keyEventBuffer: SharedArrayBuffer
   ): void {
     try {
-      app
-        .init(options, render, playAudio, progress, keyEventBuffer)
+      optcarrot
+        .init(options, render, playAudio, progress)
         .catch((e) => {
           progress({
             kind: "error",
@@ -308,4 +316,7 @@ Comlink.expose({
       });
     }
   },
+  pushKeyEvent(code: number, pressed: boolean): void {
+    optcarrot.pushKeyEvent(code, pressed);
+  }
 });
