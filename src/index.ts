@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import { KeyEventProducer } from "./key-event-bus";
-import { OptcarrotWorkerPort } from "./optcarrot.worker";
+import { OptcarrotWorkerPort, Options } from "./optcarrot.worker";
 import { RingBuffer } from "ringbuf.js";
 
 class NESView {
@@ -128,25 +128,15 @@ const padCodeFromCode = (code: string) => {
   }
 };
 
-const deriveOptions = (url: URL) => {
-  const ROMS = {
-    "Lan_Master.nes": "/optcarrot/examples/Lan_Master.nes",
-  };
+const deriveOptions: (url: URL) => Options = (url) => {
   const enableOptRaw = url.searchParams.get("opt");
-  const enableOpt = enableOptRaw === null ? true : enableOptRaw === "true";
+  const headlessRaw = url.searchParams.get("headless");
   const romRaw = url.searchParams.get("rom");
-  const romKey = romRaw === null ? "Lan_Master.nes" : romRaw;
-  const options = [];
-
-  if (enableOpt) {
-    options.push("--opt");
-  }
-  if (ROMS[romKey]) {
-    options.push(ROMS[romKey]);
-  } else {
-    throw new Error(`Unknown ROM: ${romKey}`);
-  }
-  return options;
+  return {
+    opt: enableOptRaw === null ? true : enableOptRaw === "true",
+    headless: headlessRaw === null ? false : headlessRaw === "true",
+    rom: romRaw === null ? "Lan_Master.nes" : romRaw,
+  };
 };
 
 const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
@@ -193,13 +183,20 @@ const play = async (url: URL, progress: LoadProgress) => {
     }
   });
 
+  const options = deriveOptions(url);
+  const render: (bytes: Uint8Array) => void = options.headless
+    ? (_) => {
+        fpsIndicator.innerText = fps.tick().toString();
+      }
+    : (bytes) => {
+        nesView.draw(bytes);
+        fpsIndicator.innerText = fps.tick().toString();
+      };
+
   optcarrot.init(
-    deriveOptions(url),
+    options,
     // render
-    Comlink.proxy((bytes) => {
-      nesView.draw(bytes);
-      fpsIndicator.innerText = fps.tick().toString();
-    }),
+    Comlink.proxy(render),
     // playAudio
     Comlink.proxy((bytes) => {
       if (!audioEnabled) return;
@@ -248,7 +245,7 @@ if ("serviceWorker" in navigator) {
         window.location.reload();
       } else {
         if (typeof SharedArrayBuffer !== "undefined") {
-          play(new URL(window.location.href), progress)
+          play(new URL(window.location.href), progress);
         } else {
           progress.error(
             "Your browser does not support SharedArrayBuffer. Please use a modern browser like Chrome or Firefox."

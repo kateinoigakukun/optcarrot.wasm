@@ -6,27 +6,56 @@ import * as path from "path-browserify";
 import { KeyEventConsumer } from "./key-event-bus";
 import { RingBuffer } from "ringbuf.js";
 
-type ProgressInput = {
-  kind: "progress";
-  value: number;
-} | {
-  kind: "message";
-  value: string;
-} | {
-  kind: "error";
-  message: string;
-} | {
-  kind: "done";
-}
+export type ProgressInput =
+  | {
+      kind: "progress";
+      value: number;
+    }
+  | {
+      kind: "message";
+      value: string;
+    }
+  | {
+      kind: "error";
+      message: string;
+    }
+  | {
+      kind: "done";
+    };
+
+export type Options = {
+  opt: boolean;
+  headless: boolean;
+  rom: string;
+};
+
 export interface OptcarrotWorkerPort {
   init(
-    options: string[],
+    options: Options,
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     progress: (input: ProgressInput) => void,
     keyEventBuffer: SharedArrayBuffer
   ): void;
 }
+
+const OPTCARROT_HEADLESS_DRIVER = `
+module Optcarrot
+  # Audio output driver for Web Audio API
+  class WebAudioAudio < Audio
+    def tick(output)
+      JS::eval("globalThis.Optcarrot.tickAudio()")
+    end
+  end
+  # Video output driver for Web Canvas
+  class CanvasVideo < Video
+    def tick(screen)
+      JS::eval("globalThis.Optcarrot.tickVideo()")
+    end
+  end
+  BrowserInput = Input
+end
+`;
 
 const OPTCARROT_WEB_DRIVER = `
 module Optcarrot
@@ -82,13 +111,15 @@ module Optcarrot
     end
   end
 end
-`
+`;
 
 class App implements OptcarrotWorkerPort {
   wasmFs: WasmFs;
   wasi: WASI;
   keyEventConsumer: KeyEventConsumer;
 
+  tickVideo: () => void;
+  tickAudio: () => void;
   remoteRender: (image: Uint8Array) => void;
   remotePlayAudio: (audio: Int16Array) => void;
 
@@ -120,8 +151,24 @@ class App implements OptcarrotWorkerPort {
     };
   }
 
+  computeOptions(options: Options): string[] {
+    const optionsArray = [];
+    const ROMS = {
+      "Lan_Master.nes": "/optcarrot/examples/Lan_Master.nes",
+    };
+    if (options.opt) {
+      optionsArray.push("--opt");
+    }
+    if (ROMS[options.rom]) {
+      optionsArray.push(ROMS[options.rom]);
+    } else {
+      throw new Error(`Unknown ROM: ${options.rom}`);
+    }
+    return optionsArray;
+  }
+
   async init(
-    options: string[],
+    options: Options,
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     progress: (input: ProgressInput) => void,
@@ -169,8 +216,27 @@ class App implements OptcarrotWorkerPort {
       JS::eval("console.timeEnd('require-optcarrot')")
     `);
     progress({ kind: "progress", value: 0.8 });
+
+    this.tickVideo = options.headless
+      ? () => {
+          this.remoteRender(new Uint8Array());
+        }
+      : () => {
+          const bytes = this.videoBytes();
+          this.remoteRender(Comlink.transfer(bytes, [bytes.buffer]));
+        };
+
+    this.tickAudio = options.headless
+      ? () => {
+          this.remotePlayAudio(new Int16Array());
+        }
+      : () => {
+          const bytes = this.audioBytes();
+          this.remotePlayAudio(Comlink.transfer(bytes, [bytes.buffer]));
+        };
+
     vm.eval(`
-      ${OPTCARROT_WEB_DRIVER}
+      ${options.headless ? OPTCARROT_HEADLESS_DRIVER : OPTCARROT_WEB_DRIVER}
 
       # Monkey patch the Optcarrot to use web drivers
       Optcarrot::Driver.define_singleton_method(:load) do |conf|
@@ -181,7 +247,9 @@ class App implements OptcarrotWorkerPort {
       end
 
       args = [
-          ${options.map((option) => `"${option}"`).join(", ")},
+          ${this.computeOptions(options)
+            .map((option) => `"${option}"`)
+            .join(", ")},
           "--audio-sample-rate=11050",
       ]
       JS::eval("console.time('Optcarrot::NES.new')")
@@ -190,17 +258,7 @@ class App implements OptcarrotWorkerPort {
     `);
     progress({ kind: "progress", value: 1 });
     progress({ kind: "done" });
-    vm.eval(`$nes.run`)
-  }
-
-  tickVideo() {
-    const bytes = this.videoBytes();
-    this.remoteRender(Comlink.transfer(bytes, [bytes.buffer]));
-  }
-
-  tickAudio() {
-    const bytes = this.audioBytes();
-    this.remotePlayAudio(Comlink.transfer(bytes, [bytes.buffer]));
+    vm.eval(`$nes.run`);
   }
 
   videoBytes(): Uint8Array {
@@ -228,18 +286,26 @@ globalThis.Optcarrot = app;
 
 Comlink.expose({
   init(
-    options: string[],
+    options: Options,
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
     progress: (input: ProgressInput) => void,
     keyEventBuffer: SharedArrayBuffer
   ): void {
     try {
-      app.init(options, render, playAudio, progress, keyEventBuffer).catch((e) => {
-        progress({ kind: "error", message: "Failed to initialize Optcarrot: " + e.message });
-      });
+      app
+        .init(options, render, playAudio, progress, keyEventBuffer)
+        .catch((e) => {
+          progress({
+            kind: "error",
+            message: "Failed to initialize Optcarrot: " + e.message,
+          });
+        });
     } catch (e) {
-      progress({ kind: "error", message: "Failed to initialize Optcarrot: " + e.message });
+      progress({
+        kind: "error",
+        message: "Failed to initialize Optcarrot: " + e.message,
+      });
     }
   },
 });
