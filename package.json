@@ -9,7 +9,7 @@
     "comlink": "^4.3.1",
     "path-browserify": "^1.0.1",
     "ringbuf.js": "^0.2.0",
-    "ruby-wasm-wasi": "../ruby.wasm/packages/ruby-wasm-wasi"
+    "ruby-wasm-wasi": "^0.1.2"
   },
   "devDependencies": {
     "parcel": "^2.0.1",
