@@ -33,7 +33,7 @@ export interface OptcarrotWorkerPort {
     options: Options,
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
-    progress: (input: ProgressInput) => void,
+    progress: (input: ProgressInput) => void
   ): void;
   pushKeyEvent(code: number, pressed: boolean): void;
 }
@@ -172,7 +172,7 @@ export class Optcarrot implements OptcarrotWorkerPort {
     options: Options,
     render: (image: Uint8Array) => void,
     playAudio: (audio: Int16Array) => void,
-    progress: (input: ProgressInput) => void,
+    progress: (input: ProgressInput) => void
   ) {
     this.remoteRender = render;
     this.remotePlayAudio = playAudio;
@@ -289,34 +289,43 @@ export class Optcarrot implements OptcarrotWorkerPort {
   }
 }
 
-const optcarrot = new Optcarrot();
-// @ts-ignore
-globalThis.Optcarrot = optcarrot;
+const main = () => {
+  const optcarrot = new Optcarrot();
+  // @ts-ignore
+  globalThis.Optcarrot = optcarrot;
 
-Comlink.expose({
-  init(
-    options: Options,
-    render: (image: Uint8Array) => void,
-    playAudio: (audio: Int16Array) => void,
-    progress: (input: ProgressInput) => void,
-  ): void {
-    try {
-      optcarrot
-        .init(options, render, playAudio, progress)
-        .catch((e) => {
+  Comlink.expose({
+    init(
+      options: Options,
+      render: (image: Uint8Array) => void,
+      playAudio: (audio: Int16Array) => void,
+      progress: (input: ProgressInput) => void
+    ): void {
+      try {
+        optcarrot.init(options, render, playAudio, progress).catch((e) => {
           progress({
             kind: "error",
             message: "Failed to initialize Optcarrot: " + e.message,
           });
         });
-    } catch (e) {
-      progress({
-        kind: "error",
-        message: "Failed to initialize Optcarrot: " + e.message,
-      });
-    }
-  },
-  pushKeyEvent(code: number, pressed: boolean): void {
-    optcarrot.pushKeyEvent(code, pressed);
-  }
-});
+      } catch (e) {
+        progress({
+          kind: "error",
+          message: "Failed to initialize Optcarrot: " + e.message,
+        });
+      }
+    },
+    pushKeyEvent(code: number, pressed: boolean): void {
+      optcarrot.pushKeyEvent(code, pressed);
+    },
+  });
+};
+
+if (
+  // @ts-ignore
+  typeof WorkerGlobalScope !== "undefined" &&
+  // @ts-ignore
+  self instanceof WorkerGlobalScope
+) {
+  main();
+}

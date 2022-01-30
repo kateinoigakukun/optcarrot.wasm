@@ -1,5 +1,6 @@
 import * as Comlink from "comlink";
-import { OptcarrotWorkerPort, Options } from "./optcarrot.worker";
+import { Optcarrot, OptcarrotWorkerPort, Options } from "./optcarrot.worker";
+import { UAParser } from "ua-parser-js"
 
 class NESView {
   canvasContext: CanvasRenderingContext2D;
@@ -137,14 +138,11 @@ const deriveOptions: (url: URL) => Options = (url) => {
   };
 };
 
-const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
-  // @ts-ignore
-  new Worker(new URL("optcarrot.worker.ts", import.meta.url), {
-    type: "module",
-  })
-);
-
-const play = async (url: URL, progress: LoadProgress) => {
+const play = async (
+  optcarrot: OptcarrotWorkerPort,
+  url: URL,
+  progress: LoadProgress
+) => {
   const nesView = new NESView(
     document.getElementById("nes-video") as HTMLCanvasElement
   );
@@ -218,7 +216,7 @@ const play = async (url: URL, progress: LoadProgress) => {
           break;
         }
       }
-    }),
+    })
   );
 };
 
@@ -227,4 +225,18 @@ const progress = new LoadProgress(
   document.getElementById("loading-message")
 );
 
-play(new URL(window.location.href), progress);
+const optcarrot = (() => {
+  const ua = UAParser(navigator.userAgent);
+  if (ua.browser.name === "Safari") {
+    const optcarrot = new Optcarrot();
+    return optcarrot; 
+  }
+  return Comlink.wrap<OptcarrotWorkerPort>(
+    // @ts-ignore
+    new Worker(new URL("optcarrot.worker.ts", import.meta.url), {
+      type: "module",
+    })
+  );
+})();
+globalThis.Optcarrot = optcarrot;
+play(optcarrot, new URL(window.location.href), progress);
