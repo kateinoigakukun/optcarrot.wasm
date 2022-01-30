@@ -3,25 +3,6 @@ import { KeyEventProducer } from "./key-event-bus";
 import { OptcarrotWorkerPort } from "./optcarrot.worker";
 import { RingBuffer } from "ringbuf.js";
 
-if ("serviceWorker" in navigator) {
-  // Register service worker
-  // @ts-ignore
-  navigator.serviceWorker.register(new URL("./sw.js", import.meta.url)).then(
-    function (registration) {
-      console.log("COOP/COEP Service Worker registered", registration.scope);
-      // If the registration is active, but it's not controlling the page
-      if (registration.active && !navigator.serviceWorker.controller) {
-        window.location.reload();
-      }
-    },
-    function (err) {
-      console.log("COOP/COEP Service Worker failed to register", err);
-    }
-  );
-} else {
-  console.warn("Cannot register a service worker");
-}
-
 class NESView {
   canvasContext: CanvasRenderingContext2D;
   scalingCanvas: HTMLCanvasElement;
@@ -175,11 +156,7 @@ const optcarrot = Comlink.wrap<OptcarrotWorkerPort>(
   })
 );
 
-const play = async (url: URL) => {
-  const progress = new LoadProgress(
-    document.getElementById("loading-progress") as HTMLProgressElement,
-    document.getElementById("loading-message")
-  );
+const play = async (url: URL, progress: LoadProgress) => {
   const nesView = new NESView(
     document.getElementById("nes-video") as HTMLCanvasElement
   );
@@ -255,6 +232,34 @@ const play = async (url: URL) => {
   );
 };
 
-if (typeof SharedArrayBuffer !== "undefined") {
-  play(new URL(window.location.href));
+const progress = new LoadProgress(
+  document.getElementById("loading-progress") as HTMLProgressElement,
+  document.getElementById("loading-message")
+);
+
+if ("serviceWorker" in navigator) {
+  // Register service worker
+  // @ts-ignore
+  navigator.serviceWorker.register(new URL("./sw.js", import.meta.url)).then(
+    function (registration) {
+      console.log("COOP/COEP Service Worker registered", registration.scope);
+      // If the registration is active, but it's not controlling the page
+      if (registration.active && !navigator.serviceWorker.controller) {
+        window.location.reload();
+      } else {
+        if (typeof SharedArrayBuffer !== "undefined") {
+          play(new URL(window.location.href), progress)
+        } else {
+          progress.error(
+            "Your browser does not support SharedArrayBuffer. Please use a modern browser like Chrome or Firefox."
+          );
+        }
+      }
+    },
+    function (err) {
+      console.log("COOP/COEP Service Worker failed to register", err);
+    }
+  );
+} else {
+  progress.error("No Service Worker support");
 }
