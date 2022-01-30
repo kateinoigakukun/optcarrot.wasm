@@ -28,6 +28,62 @@ export interface OptcarrotWorkerPort {
   ): void;
 }
 
+const OPTCARROT_WEB_DRIVER = `
+module Optcarrot
+  # Audio output driver for Web Audio API
+  class WebAudioAudio < Audio
+    def tick(output)
+      bin = output.pack(@pack_format)
+      File.binwrite(File.join("/OPTCARROT_TMP/audio.data"), bin)
+      JS::eval("globalThis.Optcarrot.tickAudio()")
+    rescue => e
+      JS::eval("console.warn('#{ e.inspect }')")
+    end
+  end
+  # Video output driver for Web Canvas
+  class CanvasVideo < Video
+    def init
+      super
+      @palette = @palette_rgb.map do |r, g, b|
+        0xff000000 | (b << 16) | (g << 8) | r
+      end
+    end
+
+    def dispose
+    end
+
+    def tick(screen)
+      bin = screen.pack("L*")
+      File.binwrite(File.join("/OPTCARROT_TMP", File.basename(@conf.video_output, ".EXT") + ".data"), bin)
+      JS::eval("globalThis.Optcarrot.tickVideo()")
+      super
+    rescue => e
+      JS::eval("console.warn('#{ e.inspect }')")
+    end
+  end
+  # Input driver for browser input
+  class BrowserInput < Input
+    def init
+    end
+
+    def dispose
+    end
+
+    def tick(frame, pads)
+      event = JS::eval("return globalThis.Optcarrot.fetchKeyEvent()").inspect
+      return if event == ""
+      code, pressed = event.split(",")
+      code = code.to_i
+      if pressed == "true"
+        pads.keydown(0, code)
+      else
+        pads.keyup(0, code)
+      end
+    end
+  end
+end
+`
+
 class App implements OptcarrotWorkerPort {
   wasmFs: WasmFs;
   wasi: WASI;
@@ -114,11 +170,18 @@ class App implements OptcarrotWorkerPort {
     `);
     progress({ kind: "progress", value: 0.8 });
     vm.eval(`
+      ${OPTCARROT_WEB_DRIVER}
+
+      # Monkey patch the Optcarrot to use web drivers
+      Optcarrot::Driver.define_singleton_method(:load) do |conf|
+        video = Optcarrot::CanvasVideo.new(conf)
+        audio = Optcarrot::WebAudioAudio.new(conf)
+        input = Optcarrot::BrowserInput.new(conf, video)
+        [video, audio, input]
+      end
+
       args = [
           ${options.map((option) => `"${option}"`).join(", ")},
-          "--video=canvas",
-          "--audio=webaudio",
-          "--input=browser",
           "--audio-sample-rate=11050",
       ]
       JS::eval("console.time('Optcarrot::NES.new')")
