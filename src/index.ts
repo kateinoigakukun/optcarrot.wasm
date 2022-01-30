@@ -98,14 +98,14 @@ class FpsCounter {
 
 const padCodeFromCode = (code: string) => {
   switch (code) {
-    case "KeyA":
-      return 0x0;
-    case "KeyB":
-      return 0x1;
-    case "Space":
-      return 0x2; // start
+    case "KeyZ":
+      return 0x0; // A
+    case "KeyX":
+      return 0x1; // B
     case "Enter":
-      return 0x3; // select
+      return 0x2; // select
+    case "Space":
+      return 0x3; // start
     case "ArrowUp":
       return 0x04;
     case "ArrowDown":
