@@ -2,6 +2,13 @@ html,
 body {
   height: 100%;
   margin: 0;
+  overflow-wrap: normal;
+}
+header, footer {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 90%;
+  width: fit-content;
 }
 
 .nes-display-box {

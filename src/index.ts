@@ -204,6 +204,7 @@ const play = async (url: URL) => {
   document.addEventListener("keydown", (event) => {
     const code = padCodeFromCode(event.code);
     if (code !== null) {
+      event.preventDefault();
       keyEventProducer.push(code, true);
     }
   });
