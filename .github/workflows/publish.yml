@@ -13,7 +13,7 @@ jobs:
       - name: Bundle web resources
         run: |
           npm install
-          npx parcel build src/index.html
+          npm run build:prod
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:

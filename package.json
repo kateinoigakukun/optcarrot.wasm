@@ -1,7 +1,7 @@
 {
   "name": "optcarrot-web",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:prod": "parcel build src/index.html --public-url https://kateinoigakukun.github.io/optcarrot.wasm/"
   },
   "dependencies": {
     "@wasmer/wasi": "^0.12.0",
