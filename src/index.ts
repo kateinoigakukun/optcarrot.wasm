@@ -227,6 +227,10 @@ const progress = new LoadProgress(
 
 const optcarrot = (() => {
   const ua = UAParser(navigator.userAgent);
+  if (ua.os.name === "iOS") {
+    progress.error("Optcarrot is not supported on iOS due to WebKit stack size limitation.");
+    return;
+  }
   if (ua.browser.name === "Safari") {
     const optcarrot = new Optcarrot();
     return optcarrot; 
