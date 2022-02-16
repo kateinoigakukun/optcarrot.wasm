@@ -1,5 +1,0 @@
-current directory: /Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/head-wasm32-unknown-wasi-full-js/usr/local/lib/ruby/gems/3.2.0/gems/debug-1.4.0/ext/debug
-/Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/head-wasm32-unknown-wasi-full-js/usr/local/bin/ruby -I /Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/build/build/head-wasm32-unknown-wasi-full-js/lib -r ./siteconf20220127-19572-5hjyhv.rb extconf.rb
-/Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/head-wasm32-unknown-wasi-full-js/usr/local/bin/ruby: /Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/head-wasm32-unknown-wasi-full-js/usr/local/bin/ruby: cannot execute binary file
-
-extconf failed, exit code 126

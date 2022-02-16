@@ -1,5 +1,0 @@
-current directory: /Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/pr5502-wasm32-unknown-wasi-full-js/usr/local/lib/ruby/gems/3.2.0/gems/rbs-2.0.0/ext/rbs_extension
-/Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/pr5502-wasm32-unknown-wasi-full-js/usr/local/bin/ruby -I /Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/build/build/pr5502-wasm32-unknown-wasi-full-js/lib -r ./siteconf20220128-72983-gvmw09.rb extconf.rb
-/Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/pr5502-wasm32-unknown-wasi-full-js/usr/local/bin/ruby: /Users/katei/.ghq/github.com/kateinoigakukun/ruby.wasm/rubies/pr5502-wasm32-unknown-wasi-full-js/usr/local/bin/ruby: cannot execute binary file
-
-extconf failed, exit code 126

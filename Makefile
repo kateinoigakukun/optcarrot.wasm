@@ -1,9 +1,15 @@
 FORCE:
 .PHONY: FORCE
 
-RUBY_ROOT = rubies/pr5502-wasm32-unknown-wasi-full-js
+RUBY_CHANNEL = pr5502-wasm32-unknown-wasi-full-js
+RUBY_SNAPSHOT = 2022-02-15-b
+RUBY_ROOT = rubies/$(RUBY_CHANNEL)
 
-static/optcarrot.wasm: FORCE
+$(RUBY_ROOT):
+	mkdir -p rubies
+	cd rubies && curl -L https://github.com/kateinoigakukun/ruby.wasm/releases/download/$(RUBY_SNAPSHOT)/ruby-$(RUBY_CHANNEL).tar.gz | tar xz -
+
+static/optcarrot.wasm: FORCE $(RUBY_ROOT)
 	rm -rf $(RUBY_ROOT)/usr/local/include
 	rm -f $(RUBY_ROOT)/usr/local/lib/libruby-static.a
 	wasi-vfs pack $(RUBY_ROOT)/usr/local/bin/ruby --mapdir /usr::$(RUBY_ROOT)/usr --mapdir /optcarrot::./optcarrot -o static/optcarrot.wasm
