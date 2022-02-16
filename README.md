@@ -6,6 +6,10 @@ A NES emulator written in Ruby on browser powered by WebAssembly. Built on top o
 
 Demo: https://kateinoigakukun.github.io/optcarrot.wasm
 
+## Dependencies
+
+- [wasi-vfs](https://github.com/kateinoigakukun/wasi-vfs/): Only CLI tool is required
+
 ## Development
 
 ```console
