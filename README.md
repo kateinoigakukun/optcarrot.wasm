@@ -13,6 +13,7 @@ Demo: https://kateinoigakukun.github.io/optcarrot.wasm
 ## Development
 
 ```console
+$ make static/optcarrot.wasm
 $ npm install
 $ npx parcel ./src/index.html
 ```
