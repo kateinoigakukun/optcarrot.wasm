@@ -7,7 +7,7 @@ RUBY_ROOT = rubies/$(RUBY_CHANNEL)
 
 $(RUBY_ROOT):
 	mkdir -p rubies
-	cd rubies && curl -L https://github.com/kateinoigakukun/ruby.wasm/releases/download/$(RUBY_SNAPSHOT)/ruby-$(RUBY_CHANNEL).tar.gz | tar xz -
+	cd rubies && curl -L https://github.com/kateinoigakukun/ruby.wasm/releases/download/$(RUBY_SNAPSHOT)/ruby-$(RUBY_CHANNEL).tar.gz | tar xz
 	mv $(RUBY_ROOT)/usr/local/bin/ruby $(RUBY_ROOT)/ruby.wasm
 
 static/optcarrot.wasm: FORCE $(RUBY_ROOT)
