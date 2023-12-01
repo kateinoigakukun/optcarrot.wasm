@@ -4,11 +4,9 @@
     "build:prod": "parcel build src/index.html --public-url https://kateinoigakukun.github.io/optcarrot.wasm/"
   },
   "dependencies": {
-    "@wasmer/wasi": "^0.12.0",
-    "@wasmer/wasmfs": "^0.12.0",
+    "@bjorn3/browser_wasi_shim": "^0.2.16",
     "comlink": "^4.3.1",
-    "path-browserify": "^1.0.1",
-    "ruby-wasm-wasi": "^0.1.2",
+    "@ruby/wasm-wasi": "2.3.0",
     "ua-parser-js": "^1.0.2"
   },
   "devDependencies": {

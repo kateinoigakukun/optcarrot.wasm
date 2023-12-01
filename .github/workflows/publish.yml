@@ -19,7 +19,7 @@ jobs:
           unzip wasi-vfs-cli-x86_64-unknown-linux-gnu.zip
           mv wasi-vfs /usr/local/bin/wasi-vfs
         env:
-          WASI_VFS_VERSION: "0.1.0"
+          WASI_VFS_VERSION: "0.5.0"
       - name: Build optcarrot.wasm
         run: make static/optcarrot.wasm
       - name: Bundle web resources

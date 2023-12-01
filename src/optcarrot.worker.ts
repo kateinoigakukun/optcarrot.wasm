@@ -1,26 +1,24 @@
 import * as Comlink from "comlink";
-import { WASI } from "@wasmer/wasi";
-import { WasmFs } from "@wasmer/wasmfs";
-import { RubyVM } from "ruby-wasm-wasi";
-import * as path from "path-browserify";
+import { Directory, File, OpenFile, PreopenDirectory, WASI } from "@bjorn3/browser_wasi_shim/dist/index"
+import { RubyVM } from "@ruby/wasm-wasi";
 import { KeyEventBuffer } from "./key-event-bus";
 
 export type ProgressInput =
   | {
-      kind: "progress";
-      value: number;
-    }
+    kind: "progress";
+    value: number;
+  }
   | {
-      kind: "message";
-      value: string;
-    }
+    kind: "message";
+    value: string;
+  }
   | {
-      kind: "error";
-      message: string;
-    }
+    kind: "error";
+    message: string;
+  }
   | {
-      kind: "done";
-    };
+    kind: "done";
+  };
 
 export type Options = {
   opt: boolean;
@@ -65,7 +63,7 @@ module Optcarrot
       File.binwrite(File.join("/OPTCARROT_TMP/audio.data"), bin)
       JS::eval("globalThis.Optcarrot.tickAudio()")
     rescue => e
-      JS::eval("console.warn('#{ e.inspect }')")
+      JS.global[:console].warn(e.inspect)
     end
   end
   # Video output driver for Web Canvas
@@ -86,7 +84,7 @@ module Optcarrot
       JS::eval("globalThis.Optcarrot.tickVideo()")
       super
     rescue => e
-      JS::eval("console.warn('#{ e.inspect }')")
+      JS.global[:console].warn(e.inspect)
     end
   end
   # Input driver for browser input
@@ -113,7 +111,7 @@ end
 `;
 
 export class Optcarrot implements OptcarrotWorkerPort {
-  wasmFs: WasmFs;
+  rootFs: { [key: string]: File | Directory } = {};
   wasi: WASI;
   vm: RubyVM;
   keyEventConsumer: KeyEventBuffer;
@@ -124,36 +122,24 @@ export class Optcarrot implements OptcarrotWorkerPort {
   remotePlayAudio: (audio: Int16Array) => void;
 
   constructor() {
-    this.wasmFs = new WasmFs();
-    this.wasmFs.fs.mkdirSync("/OPTCARROT_TMP", 0o777);
+    const rootContents = {}
+    rootContents["OPTCARROT_TMP"] = new Directory({})
+    this.rootFs = rootContents
+
     const args = ["ruby.wasm", "-e_=0"];
-    this.wasi = new WASI({
-      bindings: {
-        ...WASI.defaultBindings,
-        fs: this.wasmFs.fs,
-        path,
-      },
-      args,
-      preopenDirectories: {
-        "/OPTCARROT_TMP": "/OPTCARROT_TMP",
-      },
+    this.wasi = new WASI(args, [], [
+      new OpenFile(new File([])), // stdin
+      new OpenFile(new File([])), // stdout
+      new OpenFile(new File([])), // stderr
+      new PreopenDirectory("/", rootContents)
+    ], {
+      debug: false
     });
-    const originalWriteSync = this.wasmFs.fs.writeSync.bind(this.wasmFs.fs);
-    // @ts-ignore
-    this.wasmFs.fs.writeSync = (fd, buffer, offset, length, position) => {
-      const text = new TextDecoder("utf-8").decode(buffer);
-      const handlers = {
-        1: (line) => console.log(line),
-        2: (line) => console.warn(line),
-      };
-      if (handlers[fd]) handlers[fd](text);
-      return originalWriteSync(fd, buffer, offset, length, position);
-    };
     this.keyEventConsumer = new KeyEventBuffer([]);
   }
 
   computeOptions(options: Options): string[] {
-    const optionsArray = [];
+    const optionsArray: string[] = [];
     const ROMS = {
       "Lan_Master.nes": "/optcarrot/examples/Lan_Master.nes",
     };
@@ -197,8 +183,7 @@ export class Optcarrot implements OptcarrotWorkerPort {
     progress({ kind: "progress", value: 0.3 });
 
     // Initialize WASI application
-    this.wasi.setMemory(instance.exports.memory as WebAssembly.Memory);
-    (instance.exports._initialize as any)();
+    this.wasi.initialize(instance as any);
 
     // Initialize Ruby VM
     vm.initialize();
@@ -266,16 +251,15 @@ export class Optcarrot implements OptcarrotWorkerPort {
   }
 
   videoBytes(): Uint8Array {
-    return this.wasmFs.fs.readFileSync(
-      "/OPTCARROT_TMP/video.data"
-    ) as Uint8Array;
+    const tmpDir = this.rootFs["OPTCARROT_TMP"] as Directory
+    const data = tmpDir.get_entry_for_path("video.data") as File
+    return data.data
   }
 
   audioBytes(): Int16Array {
-    const bytes = this.wasmFs.fs.readFileSync(
-      "/OPTCARROT_TMP/audio.data"
-    ) as Uint8Array;
-    return new Int16Array(bytes.buffer);
+    const tmpDir = this.rootFs["OPTCARROT_TMP"] as Directory
+    const data = tmpDir.get_entry_for_path("audio.data") as File
+    return new Int16Array(data.data.buffer)
   }
 
   pushKeyEvent(code: number, pressed: boolean): void {
